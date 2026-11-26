@@ -9,6 +9,7 @@ export interface AccountsTable {
   code: string;
   allow_negative: ColumnType<boolean, boolean | undefined, never>;
   balance: ColumnType<number, number | undefined, number>;
+  seq: ColumnType<number, never, never>;
   created_at: ColumnType<Date, never, never>;
 }
 
@@ -21,6 +22,7 @@ export interface EntriesTable {
   amount: number;
   refund_of: string | null;
   reference: string | null;
+  seq: ColumnType<number, never, never>;
   created_at: ColumnType<Date, never, never>;
 }
 

@@ -1,8 +1,12 @@
+import { Inject, Injectable } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import type { Kysely, Selectable, Transaction } from "kysely";
+import { KYSELY } from "../db/database.module.js";
 import type { Database, EntriesTable, EntryKind } from "../db/schema.js";
+import { decodeCursor, encodeCursor } from "./cursor.js";
 import {
   AccountNotFound,
+  EntryNotFound,
   DuplicateAccount,
   IdempotencyConflict,
   InsufficientCredits,
@@ -62,8 +66,51 @@ interface Leg {
 
 type Trx = Transaction<Database>;
 
+export interface Page<T> {
+  data: T[];
+  nextCursor: string | null;
+}
+
+@Injectable()
 export class LedgerService {
-  constructor(private readonly db: Kysely<Database>) {}
+  constructor(@Inject(KYSELY) private readonly db: Kysely<Database>) {}
+
+  async getAccount(accountId: string): Promise<Account> {
+    return this.findCustomer(this.db, accountId);
+  }
+
+  async listAccounts(page: { limit: number; cursor?: string }): Promise<Page<Account>> {
+    const before = decodeCursor(page.cursor);
+    let query = this.db
+      .selectFrom("accounts")
+      .select(["id", "code", "balance", "seq"])
+      .where("kind", "=", "customer")
+      .orderBy("seq", "desc")
+      .limit(page.limit + 1);
+    if (before) query = query.where("seq", "<", before);
+    return toPage(await query.execute(), page.limit, ({ id, code, balance }) => ({ id, code, balance }));
+  }
+
+  async listEntries(accountId: string, page: { limit: number; cursor?: string }): Promise<Page<Entry>> {
+    const before = decodeCursor(page.cursor);
+    await this.findCustomer(this.db, accountId);
+    let query = this.db
+      .selectFrom("entries")
+      .selectAll()
+      .where("account_id", "=", accountId)
+      .orderBy("seq", "desc")
+      .limit(page.limit + 1);
+    if (before) query = query.where("seq", "<", before);
+    return toPage(await query.execute(), page.limit, toEntry);
+  }
+
+  async getEntry(entryId: string): Promise<Entry> {
+    const row = UUID.test(entryId)
+      ? await this.db.selectFrom("entries").selectAll().where("id", "=", entryId).executeTakeFirst()
+      : undefined;
+    if (!row) throw new EntryNotFound(`entry ${entryId} not found`);
+    return toEntry(row);
+  }
 
   async openAccount(code: string): Promise<Account> {
     try {
@@ -280,6 +327,12 @@ function hashRequest(kind: EntryKind, input: object, refundOf: string | null): s
   const { idempotencyKey: _key, ...rest } = input as { idempotencyKey: string } & Record<string, unknown>;
   const canonical = JSON.stringify({ kind, refundOf, ...rest }, Object.keys({ kind, refundOf, ...rest }).sort());
   return createHash("sha256").update(canonical).digest("hex");
+}
+
+function toPage<R extends { seq: number }, T>(rows: R[], limit: number, map: (row: R) => T): Page<T> {
+  const items = rows.slice(0, limit);
+  const last = items.at(-1);
+  return { data: items.map(map), nextCursor: rows.length > limit && last ? encodeCursor(last.seq) : null };
 }
 
 function toEntry(row: Selectable<EntriesTable>): Entry {

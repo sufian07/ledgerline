@@ -4,7 +4,7 @@ import { afterAll, beforeAll, inject } from "vitest";
 import { AppModule } from "../src/app.module.js";
 import { configureApp } from "../src/configure-app.js";
 
-export const API_KEY = "test-api-key";
+export const API_KEY = "test-api-key-0123456789";
 
 // Boots the real application (same module and setup as production) for a spec file.
 export function useApp(): () => INestApplication {

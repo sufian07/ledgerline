@@ -13,3 +13,5 @@ export class PurchaseNotFound extends LedgerError {}
 export class InsufficientCredits extends LedgerError {}
 export class RefundExceedsPurchase extends LedgerError {}
 export class IdempotencyConflict extends LedgerError {}
+export class EntryNotFound extends LedgerError {}
+export class InvalidCursor extends LedgerError {}

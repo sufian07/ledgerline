@@ -3,6 +3,7 @@
   "private": true,
   "description": "Double-entry credits ledger API in NestJS and PostgreSQL",
   "license": "MIT",
+  "type": "module",
   "engines": {
     "node": ">=24"
   },
@@ -10,7 +11,8 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:migrate": "node dist/db/migrate-cli.js"
   },
   "dependencies": {
     "@nestjs/common": "12.4.2",
