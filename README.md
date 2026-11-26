@@ -106,7 +106,13 @@ npm ci
 npm test
 ```
 
-Without `DATABASE_URL`, the tests start a throwaway PostgreSQL 18 with `embedded-postgres`. CI runs them against a PostgreSQL 18 service container.
+Without `DATABASE_URL`, the tests start a throwaway PostgreSQL 18 with `embedded-postgres`. CI runs them against a PostgreSQL 18 service container, then builds the Docker image and checks it end to end: it refuses to start without an API key, credits a Hookline-signed payment once, and keeps its data across a restart.
+
+## Deployment
+
+`render.yaml` deploys a free web service and a free PostgreSQL 18 on Render, after CI passes on `main`. The container runs migrations, then starts the server (free services have no pre-deploy step).
+
+Free-plan limits: the service sleeps after 15 minutes idle (the next request takes about a minute), and free PostgreSQL expires 30 days after creation, with no backups. That suits a demo, not real money.
 
 ## Stack
 
