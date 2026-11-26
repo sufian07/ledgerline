@@ -5,13 +5,13 @@ import { AccountsController } from "./http/accounts.controller.js";
 import { ApiKeyGuard } from "./http/api-key.guard.js";
 import { ErrorsFilter } from "./http/errors.filter.js";
 import { SystemController } from "./http/system.controller.js";
-import { LedgerService } from "./ledger/ledger.service.js";
+import { LedgerModule } from "./ledger/ledger.module.js";
+import { PaymentsModule } from "./payments/payments.module.js";
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, LedgerModule, PaymentsModule],
   controllers: [AccountsController, SystemController],
   providers: [
-    LedgerService,
     { provide: APP_GUARD, useClass: ApiKeyGuard },
     { provide: APP_FILTER, useClass: ErrorsFilter },
   ],

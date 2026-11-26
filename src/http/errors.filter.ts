@@ -10,12 +10,17 @@ import {
   InvalidAmount,
   InvalidCursor,
   InvalidIdempotencyKey,
-  LedgerError,
   PurchaseNotFound,
   RefundExceedsPurchase,
 } from "../ledger/ledger.errors.js";
+import {
+  InvalidPaymentEvent,
+  PaymentAccountNotFound,
+  PaymentProviderError,
+  PaymentsNotConfigured,
+} from "../payments/payments.errors.js";
 
-const LEDGER_ERRORS: [new (...args: never[]) => LedgerError, number, string][] = [
+const KNOWN_ERRORS: [new (...args: never[]) => Error, number, string][] = [
   [InvalidAmount, 400, "invalid_request"],
   [InvalidIdempotencyKey, 400, "invalid_request"],
   [InvalidCursor, 400, "invalid_request"],
@@ -26,6 +31,10 @@ const LEDGER_ERRORS: [new (...args: never[]) => LedgerError, number, string][] =
   [IdempotencyConflict, 409, "idempotency_conflict"],
   [InsufficientCredits, 422, "insufficient_credits"],
   [RefundExceedsPurchase, 422, "refund_exceeds_purchase"],
+  [PaymentAccountNotFound, 422, "account_not_found"],
+  [InvalidPaymentEvent, 422, "invalid_payment_event"],
+  [PaymentProviderError, 502, "payment_provider_error"],
+  [PaymentsNotConfigured, 503, "payments_not_configured"],
 ];
 
 const HTTP_CODES: Record<number, string> = {
@@ -47,7 +56,7 @@ export class ErrorsFilter implements ExceptionFilter {
   }
 
   private describe(exception: unknown): [number, { code: string; message: string; details?: unknown }] {
-    const known = LEDGER_ERRORS.find(([type]) => exception instanceof type);
+    const known = KNOWN_ERRORS.find(([type]) => exception instanceof type);
     if (known && exception instanceof Error) return [known[1], { code: known[2], message: exception.message }];
 
     if (exception instanceof ZodError) {

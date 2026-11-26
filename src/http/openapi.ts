@@ -34,7 +34,8 @@ export const openApiDocument = {
   info: {
     title: "Ledgerline",
     version: "1.0.0",
-    description: "Double-entry credits ledger. /health and /openapi.json are public; everything else needs the API key.",
+    description:
+      "Double-entry credits ledger. /health, /openapi.json and the signed webhooks (/webhooks/stripe, /webhooks/hookline) are public; everything else needs the API key.",
   },
   security: [{ apiKey: [] }],
   paths: {
@@ -72,6 +73,33 @@ export const openApiDocument = {
     },
     "/v1/purchases/{purchaseId}/refunds": {
       post: { summary: "Refund part or all of a purchase", parameters: [idParam("purchaseId"), idempotencyHeader], requestBody: moveRequest, responses: moneyResponses },
+    },
+    "/v1/accounts/{accountId}/checkout-sessions": {
+      post: {
+        summary: "Start a Stripe Checkout for credits; the account is credited when Stripe confirms payment",
+        parameters: [idParam("accountId"), idempotencyHeader],
+        requestBody: {
+          required: true,
+          ...json({
+            type: "object",
+            required: ["credits", "successUrl", "cancelUrl"],
+            properties: {
+              credits: { type: "integer", minimum: 1, maximum: 100_000 },
+              successUrl: { type: "string", format: "uri" },
+              cancelUrl: { type: "string", format: "uri" },
+            },
+          }),
+        },
+        responses: {
+          "201": {
+            description: "Checkout session created; send the customer to url",
+            ...json({ type: "object", properties: { id: { type: "string" }, url: { type: "string", format: "uri" } } }),
+          },
+          "404": error("Not found"),
+          "502": error("Stripe refused or could not be reached"),
+          "503": error("Payments are not configured"),
+        },
+      },
     },
     "/v1/entries/{entryId}": {
       get: {
