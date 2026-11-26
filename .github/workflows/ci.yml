@@ -46,3 +46,54 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  image:
+    name: Docker image against PostgreSQL
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18.6-bookworm@sha256:f1ea2a1a4fb7b68d4836be1fdcb8a6466a89b072158bf9d97663600538c294c5
+        env:
+          POSTGRES_USER: ledgerline
+          POSTGRES_PASSWORD: ledgerline
+          POSTGRES_DB: ledgerline
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ledgerline"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      API_KEY: ci-api-key-0123456789abcdef
+      HOOKLINE_SECRET: ci-hookline-secret
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image
+        run: docker build --tag ledgerline:ci .
+      - name: Refuse to start without an API key
+        run: |
+          if timeout 60 docker run --rm --network host \
+               -e DATABASE_URL=postgres://ledgerline:ledgerline@127.0.0.1:5432/ledgerline ledgerline:ci; then
+            echo "The image started without an API key"; exit 1
+          fi
+      - name: Start the container
+        run: |
+          docker run -d --name app --network host -e PORT=3000 \
+            -e DATABASE_URL=postgres://ledgerline:ledgerline@127.0.0.1:5432/ledgerline \
+            -e LEDGERLINE_API_KEY="$API_KEY" -e LEDGERLINE_HOOKLINE_SECRET="$HOOKLINE_SECRET" ledgerline:ci
+      - name: Smoke test
+        run: BASE_URL=http://127.0.0.1:3000 script/container-smoke.sh
+      - name: Data survives a restart, and migrations rerun cleanly
+        run: |
+          docker restart app
+          for _ in $(seq 60); do curl -sf http://127.0.0.1:3000/health > /dev/null && break; sleep 1; done
+          docker logs app 2>&1 | grep -c "Migrations are up to date." | grep -qx 2
+          curl -sf -H "Authorization: Bearer $API_KEY" http://127.0.0.1:3000/v1/accounts             | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s).data;if(a.length!==1||a[0].balance!==100)process.exit(1);console.log("ok: account and balance kept")})'
+      - name: Container logs
+        if: failure()
+        run: docker logs app 2>&1 | tail -n 80 || true

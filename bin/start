@@ -1,0 +1,6 @@
+#!/bin/sh
+# Migrate, then hand the process over to the server (so it receives stop signals).
+# Render's free plan has no pre-deploy step, so migrations run here.
+set -e
+node dist/db/migrate-cli.js
+exec node dist/main.js
