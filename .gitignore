@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+.pg/
+.env*
+!.env.example
+*.log
