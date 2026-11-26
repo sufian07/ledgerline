@@ -25,7 +25,7 @@ export interface EntriesTable {
 }
 
 export interface PostingsTable {
-  id: Generated<string>;
+  id: Generated<number>;
   entry_id: string;
   account_id: string;
   amount: number;
