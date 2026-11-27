@@ -4,7 +4,7 @@
 
 A double-entry credits ledger in TypeScript and PostgreSQL. Customers buy credits, spend them, and get refunds; every change is recorded so balances can always be rebuilt and checked.
 
-Status: the ledger core, HTTP API and Stripe payments (test mode) are done. Deployment is next.
+Status: done and deployed. Live API: [ledgerline-5omj.onrender.com](https://ledgerline-5omj.onrender.com/openapi.json) (free plan: the first request after a quiet spell takes about a minute). The API needs a key, so the public view is the [OpenAPI description](https://ledgerline-5omj.onrender.com/openapi.json) and [health check](https://ledgerline-5omj.onrender.com/health).
 
 ## How it works
 
@@ -111,6 +111,8 @@ Without `DATABASE_URL`, the tests start a throwaway PostgreSQL 18 with `embedded
 ## Deployment
 
 `render.yaml` deploys a free web service and a free PostgreSQL 18 on Render, after CI passes on `main`. The container runs migrations, then starts the server (free services have no pre-deploy step).
+
+To try a real Stripe test-mode purchase end to end, run `script/try-checkout.ps1 -BaseUrl <service URL>`. It reads the API key from `.env`, starts a Checkout, waits while you pay with Stripe's test card, and shows the credited balance.
 
 Free-plan limits: the service sleeps after 15 minutes idle (the next request takes about a minute), and free PostgreSQL expires 30 days after creation, with no backups. That suits a demo, not real money.
 
